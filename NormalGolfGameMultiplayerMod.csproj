@@ -1,0 +1,74 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <Nullable>enable</Nullable>
+    <Configurations>Debug;Release;FUSION;STEAMWORKS</Configurations>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="0Harmony">
+      <HintPath>thirdparty\0Harmony.dll</HintPath>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>..\SteamLibrary\steamapps\common\Normal Golf Game Demo\Normal\Normal Golf Game_Data\Managed\Assembly-CSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>thirdparty\BepInEx.dll</HintPath>
+    </Reference>
+    <Reference Include="ECM2">
+      <HintPath>thirdparty\ECM2.dll</HintPath>
+    </Reference>
+    <Reference Include="Fusion.Common">
+      <HintPath>thirdparty\Fusion.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="Fusion.Log">
+      <HintPath>thirdparty\Fusion.Log.dll</HintPath>
+    </Reference>
+    <Reference Include="Fusion.Realtime">
+      <HintPath>thirdparty\Fusion.Realtime.dll</HintPath>
+    </Reference>
+    <Reference Include="Fusion.Runtime">
+      <HintPath>thirdparty\Fusion.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="Fusion.Sockets">
+      <HintPath>thirdparty\Fusion.Sockets.dll</HintPath>
+    </Reference>
+    <Reference Include="Fusion.Unity">
+      <HintPath>thirdparty\Fusion.Unity.dll</HintPath>
+    </Reference>
+    <Reference Include="NormalGolfGameMultiplayerModUnity">
+      <HintPath>..\NormalGolfGameMultiplayerModUnity\Library\ScriptAssemblies\NormalGolfGameMultiplayerModUnity.dll</HintPath>
+    </Reference>
+    <Reference Include="Steamworks.NET">
+      <HintPath>thirdparty\Steamworks.NET.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>thirdparty\UnityEngine.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.AssetBundleModule">
+      <HintPath>thirdparty\UnityEngine.AssetBundleModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>thirdparty\UnityEngine.AudioModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>thirdparty\UnityEngine.CoreModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>thirdparty\UnityEngine.IMGUIModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.InputForUIModule">
+      <HintPath>thirdparty\UnityEngine.InputForUIModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>thirdparty\UnityEngine.InputLegacyModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.InputModule">
+      <HintPath>thirdparty\UnityEngine.InputModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>thirdparty\UnityEngine.PhysicsModule.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>

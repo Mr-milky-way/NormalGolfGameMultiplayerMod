@@ -1,0 +1,9 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="FUSION" />
+    <BuildType Name="Release" />
+    <BuildType Name="STEAMWORKS" />
+  </Configurations>
+  <Project Path="NormalGolfGameMultiplayerMod.csproj" />
+</Solution>
