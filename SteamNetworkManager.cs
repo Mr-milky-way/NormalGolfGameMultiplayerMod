@@ -122,6 +122,9 @@ namespace NormalGolfGameMultiplayerMod
 
             CSteamID lobbyID = new CSteamID(callback.m_ulSteamIDLobby);
 
+            Globals.SteamSaveObjectSync.m_CurrentLobbyID = lobbyID;
+            Globals.SteamSaveObjectSync.m_HostSteamId = SteamUser.GetSteamID();
+
             m_CurrentLobbyID = lobbyID;
             m_CurrentLobbyOwnerID = SteamUser.GetSteamID();
 
@@ -192,6 +195,9 @@ namespace NormalGolfGameMultiplayerMod
 
                 m_CurrentLobbyID = lobbyID;
                 m_CurrentLobbyOwnerID = SteamMatchmaking.GetLobbyOwner(lobbyID);
+
+                Globals.SteamSaveObjectSync.m_CurrentLobbyID = lobbyID;
+                Globals.SteamSaveObjectSync.m_HostSteamId = m_CurrentLobbyOwnerID;
 
                 UpdateLobbyMembers();
             }
@@ -283,15 +289,7 @@ namespace NormalGolfGameMultiplayerMod
 
                     if (packet[0] == 1)
                     {
-                        CSteamID senderSteamID = message.m_identityPeer.GetSteamID();
-                        if (m_activePlayerBalls.TryGetValue(senderSteamID, out GameObject avatar))
-                        {
-                            var senderScript = avatar.GetComponent<SteamBallPosSender>();
-                            if (senderScript != null)
-                            {
-                                senderScript.UnpackStatePayload(packet);
-                            }
-                        }
+                        Globals.SteamSaveObjectSync.UnpackStatePayload(packet);
                     }
                 }
 

@@ -11,7 +11,7 @@
       <HintPath>thirdparty\0Harmony.dll</HintPath>
     </Reference>
     <Reference Include="Assembly-CSharp">
-      <HintPath>..\SteamLibrary\steamapps\common\Normal Golf Game Demo\Normal\Normal Golf Game_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <HintPath>thirdparty\Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="BepInEx">
       <HintPath>thirdparty\BepInEx.dll</HintPath>

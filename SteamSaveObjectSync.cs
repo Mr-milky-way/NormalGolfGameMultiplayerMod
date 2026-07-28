@@ -14,8 +14,8 @@ namespace NormalGolfGameMultiplayerMod
     {
 
         private CSteamID m_ObjOwnerSteamId;
-        private CSteamID m_CurrentLobbyID;
-        private CSteamID m_HostSteamId;
+        public CSteamID m_CurrentLobbyID;
+        public CSteamID m_HostSteamId;
 
         public bool IsLocalPlayer => m_ObjOwnerSteamId == SteamUser.GetSteamID();
         public bool IsHost => m_HostSteamId == SteamUser.GetSteamID();
