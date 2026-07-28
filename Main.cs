@@ -2,7 +2,11 @@
 using BepInEx.Configuration;
 using HarmonyLib;
 using Steamworks;
+using System.IO;
+using System.Reflection;
+using System.Collections;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 
 //************************************************************************************************************************************************************************************************************************************************************************
@@ -62,12 +66,17 @@ namespace NormalGolfGameMultiplayerMod
         public static AssetBundle Bundle;
         public static ConfigEntry<bool> IsModEnabled;
 
+        public static bool IsInLobby = false;
+        public static bool IsLobbyHost = false;
+
+
 #if STEAMWORKS
         public static float NetworkTickRate = 20f;
         public static bool SteamInitialized = false;
         public static string SteamIdDemo = "4663130";
         public static string SteamId = "3510740";
         public static bool IsDemo = true;
+        public static SteamSaveObjectSync SteamSaveObjectSync;
 #endif
     }
 
@@ -154,9 +163,34 @@ namespace NormalGolfGameMultiplayerMod
 #endif
 
 #if STEAMWORKS
-                SteamNetworkManager SNM = roomsObject.AddComponent<SteamNetworkManager>();
+            SteamNetworkManager SNM = roomsObject.AddComponent<SteamNetworkManager>();
+            SteamSaveObjectSync SSOS = roomsObject.AddComponent<SteamSaveObjectSync>();
+            Globals.SteamSaveObjectSync = SSOS;
 #endif
             return true;
         }
     }
+
+
+    [HarmonyPatch(typeof(SaveManager), "SaveRun")]
+    class SaveManPrefix
+    {
+        static bool Prefix(SaveManager __instance)
+        {
+            if (Globals.IsInLobby && !Globals.IsLobbyHost)
+            {
+                Debug.Log("Saving is disabled in lobbies which are not yours.");
+                return false;
+            }
+#if STEAMWORKS
+            if (Globals.IsLobbyHost && Globals.IsInLobby)
+            {
+                Globals.SteamSaveObjectSync.m_NeedsSending = true;
+            }
+#endif
+            return true;
+        }
+    }
+
+
 }

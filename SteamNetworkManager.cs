@@ -11,6 +11,7 @@ namespace NormalGolfGameMultiplayerMod
     public class SteamNetworkManager : MonoBehaviour
     {
 
+
         // Callbacks
         private Callback<LobbyCreated_t> m_LobbyCreated;
         private Callback<LobbyMatchList_t> m_LobbyMatchList;
@@ -18,7 +19,7 @@ namespace NormalGolfGameMultiplayerMod
         private Callback<LobbyChatUpdate_t> m_LobbyChatUpdate;
 
         // Room Generation/Search
-        [SerializeField] private const string m_MOD_FILTER_KEY = "NGGMM1.0.0"; // This keeps people on different versions of the mod/game apart in the lobbies (has to be changed every update)
+        [SerializeField] private const string m_MOD_FILTER_KEY = "NGGMM1.0.0";
 
         [SerializeField] private int m_RoomCodeLength = 6;
         private const string m_Characters = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -126,6 +127,12 @@ namespace NormalGolfGameMultiplayerMod
 
             Debug.Log($"[NormalGolfGameMultiplayer] Lobby created successfully, ID: {lobbyID}");
 
+            // Join button thingy (untested)
+            SteamFriends.SetRichPresence("connect", $"+connect_lobby {lobbyID.m_SteamID}");
+
+            Globals.IsLobbyHost = true;
+            Globals.IsInLobby = true;
+
             UpdateLobbyMembers();
 
             SteamMatchmaking.SetLobbyData(lobbyID, "mod_identifier", m_MOD_FILTER_KEY);
@@ -180,6 +187,9 @@ namespace NormalGolfGameMultiplayerMod
             if (callback.m_EChatRoomEnterResponse == (uint)EChatRoomEnterResponse.k_EChatRoomEnterResponseSuccess)
             {
                 Debug.Log($"[NormalGolfGameMultiplayer] Successfully joined lobby: {lobbyID}");
+
+                Globals.IsInLobby = true;
+
                 m_CurrentLobbyID = lobbyID;
                 m_CurrentLobbyOwnerID = SteamMatchmaking.GetLobbyOwner(lobbyID);
 
@@ -213,7 +223,7 @@ namespace NormalGolfGameMultiplayerMod
 
 
         // Network Data Handling ----------------------------------------------------------------------------------------------------------------------------------
-        // This is done here so all msg handling is centralized and not a bug mess on each object
+        // This is done here so all msg handling is centralized and not a big mess on each object
         private void ReceiveNetworkMessages()
         {
             IntPtr[] messagePtrs = new IntPtr[64];
@@ -252,6 +262,26 @@ namespace NormalGolfGameMultiplayerMod
                     Marshal.Copy(message.m_pData, packet, 0, 17);
 
                     if (packet[0] == 2)
+                    {
+                        CSteamID senderSteamID = message.m_identityPeer.GetSteamID();
+                        if (m_activePlayerBalls.TryGetValue(senderSteamID, out GameObject avatar))
+                        {
+                            var senderScript = avatar.GetComponent<SteamBallPosSender>();
+                            if (senderScript != null)
+                            {
+                                senderScript.UnpackStatePayload(packet);
+                            }
+                        }
+                    }
+                }
+
+
+                if (message.m_cbSize == 22)
+                {
+                    byte[] packet = new byte[22];
+                    Marshal.Copy(message.m_pData, packet, 0, 22);
+
+                    if (packet[0] == 1)
                     {
                         CSteamID senderSteamID = message.m_identityPeer.GetSteamID();
                         if (m_activePlayerBalls.TryGetValue(senderSteamID, out GameObject avatar))
