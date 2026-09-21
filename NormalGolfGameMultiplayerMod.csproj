@@ -4,6 +4,8 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <Nullable>enable</Nullable>
     <Configurations>Debug;Release;FUSION;STEAMWORKS</Configurations>
+    <FileVersion>0.1.0</FileVersion>
+    <AssemblyVersion>0.1.0</AssemblyVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,6 +17,9 @@
     </Reference>
     <Reference Include="BepInEx">
       <HintPath>thirdparty\BepInEx.dll</HintPath>
+    </Reference>
+    <Reference Include="com.rlabrecque.steamworks.net">
+      <HintPath>thirdparty\com.rlabrecque.steamworks.net.dll</HintPath>
     </Reference>
     <Reference Include="ECM2">
       <HintPath>thirdparty\ECM2.dll</HintPath>
@@ -39,9 +44,6 @@
     </Reference>
     <Reference Include="NormalGolfGameMultiplayerModUnity">
       <HintPath>..\NormalGolfGameMultiplayerModUnity\Library\ScriptAssemblies\NormalGolfGameMultiplayerModUnity.dll</HintPath>
-    </Reference>
-    <Reference Include="Steamworks.NET">
-      <HintPath>thirdparty\Steamworks.NET.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine">
       <HintPath>thirdparty\UnityEngine.dll</HintPath>

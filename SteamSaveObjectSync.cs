@@ -7,10 +7,11 @@ using System.Runtime.InteropServices;
 using System.Text;
 using UnityEngine;
 using UnityEngine.PlayerLoop;
+using UnityEngine.SceneManagement;
 
 namespace NormalGolfGameMultiplayerMod
 {
-    public class SteamSaveObjectSync: MonoBehaviour
+    public class SteamSaveObjectSync : MonoBehaviour
     {
 
         private CSteamID m_ObjOwnerSteamId;
@@ -27,7 +28,7 @@ namespace NormalGolfGameMultiplayerMod
         float m_sendRate = 1;
         public bool m_NeedsSending = false;
 
-        SaveableObject[] Objects;
+        public SaveableObject[] Objects;
 
         int NumberOfObjects = -1;
 
@@ -35,7 +36,7 @@ namespace NormalGolfGameMultiplayerMod
         {
             Objects = GetSynchronizedArray();
             NumberOfObjects = Objects.Length;
-            m_sendRate = 3f / NumberOfObjects;
+            m_sendRate = 1f / NumberOfObjects;
         }
 
         int index = 0;
@@ -43,6 +44,14 @@ namespace NormalGolfGameMultiplayerMod
 
         void Update()
         {
+            if (SceneManager.GetActiveScene().name != "Main")
+            {
+                return;
+            }
+            if (Objects.Length == 0)
+            {
+                Objects = GetSynchronizedArray();
+            }
             if (IsHost && m_NeedsSending)
             {
                 if (m_TickTimer >= m_sendRate)
@@ -105,7 +114,7 @@ namespace NormalGolfGameMultiplayerMod
                             ptr,
                             (uint)_sendBuffer.Length,
                             Constants.k_nSteamNetworkingSend_Reliable,
-                            0
+                            1
                         );
                     }
                 }

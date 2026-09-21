@@ -1,4 +1,6 @@
 ﻿#if STEAMWORKS
+using ECM2.Examples.FirstPerson;
+using Fusion;
 using Steamworks;
 using System;
 using System.Runtime.InteropServices;
@@ -6,9 +8,9 @@ using UnityEngine;
 
 namespace NormalGolfGameMultiplayerMod
 {
-    internal class SteamPlayerSender : MonoBehaviour
+    public class SteamPlayerSender : MonoBehaviour
     {
-
+        // Steamworks related fields -----------------------------------------------------------------------------------------------
         private CSteamID m_ObjOwnerSteamId;
         private CSteamID m_CurrentLobbyID;
         private CSteamID m_HostSteamId;
@@ -17,17 +19,32 @@ namespace NormalGolfGameMultiplayerMod
         public bool IsLocalPlayer => m_ObjOwnerSteamId == SteamUser.GetSteamID();
         public bool IsHost => m_HostSteamId == SteamUser.GetSteamID();
 
+        float m_TickInterval = 1 / Globals.NetworkTickRate;
+        float m_TickTimer = 0f;
+        //--------------------------------------------------------------------------------------------------------------------------
 
-        private readonly byte[] _sendBuffer = new byte[25];
 
+        // Data buffers for sending and receiving network data ---------------------------------------------------------------------
+        private readonly byte[] _sendBuffer = new byte[29];
+        private readonly byte[] _soundBuffer = new byte[2];
+        //--------------------------------------------------------------------------------------------------------------------------
 
+        // Player transforms -------------------------------------------------------------------------------------------------------
         private Transform localPlayerTransform;
 
+        // This uses 2 rotation transforms because the first person character is disabled when the player is in the golfing menu. See GetPlayerRot()
+        private Transform localPlayerTransformforROT;
+        private Transform localPlayerTransformforROT1;
+        //--------------------------------------------------------------------------------------------------------------------------
+
+        // Wind
         private WindPanel windPanel;
 
-
+        // Networked variables -----------------------------------------------------------------------------------------------------
         Vector2 m_NetworkedWind;
         Vector3 m_NetworkedPosition;
+        Vector3 m_NetworkedRot;
+        //--------------------------------------------------------------------------------------------------------------------------
 
         Vector2 m_NetworkedWindTarget;
         Vector3 m_NetworkedPositionTarget;
@@ -35,11 +52,6 @@ namespace NormalGolfGameMultiplayerMod
 
         private Vector3 m_Posvelocity = Vector3.zero;
         private Vector2 m_Windvelocity = Vector2.zero;
-
-        float m_TickInterval = 1 / Globals.NetworkTickRate;
-        float m_TickTimer = 0f;
-
-
 
         public void SetPlayerData(CSteamID ObjOwnerID, CSteamID LobbyID, CSteamID HostId)
         {
@@ -50,68 +62,66 @@ namespace NormalGolfGameMultiplayerMod
 
         void Start()
         {
+            if (IsLocalPlayer)
+            {
+                Globals.LocalPlayerSender = this;
+            }
             windPanel = GameObject.FindAnyObjectByType<WindPanel>();
 
-            if (TryGetComponent<MeshRenderer>(out var renderer))
+            if (IsLocalPlayer)
             {
-                if (IsLocalPlayer)
+                if (TryGetComponent<MeshRenderer>(out var meshRenderer))
                 {
-                    if (TryGetComponent<MeshRenderer>(out var meshRenderer))
-                    {
-                        meshRenderer.enabled = false;
-                    }
-
-                    if (TryGetComponent<Collider>(out var collider))
-                    {
-                        collider.enabled = false;
-                    }
+                    meshRenderer.enabled = false;
                 }
-                else
+
+                if (TryGetComponent<Collider>(out var collider))
                 {
-                    Shader gameShader = Shader.Find("Universal Render Pipeline/Lit");
-                    if (gameShader == null)
-                    {
-                        gameShader = Shader.Find("Standard");
-                    }
-
-                    if (gameShader != null)
-                    {
-                        Material newMat = new Material(gameShader);
-
-                        if (newMat.HasProperty("_BaseColor"))
-                            newMat.SetColor("_BaseColor", Color.orange);
-                        else
-                            newMat.SetColor("_Color", Color.orange);
-
-                        renderer.material = newMat;
-                    }
-                    else
-                    {
-                        GameObject tempCube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                        Material defaultMat = tempCube.GetComponent<MeshRenderer>().sharedMaterial;
-                        Destroy(tempCube);
-
-                        Material instantiatedMat = new Material(defaultMat);
-                        if (instantiatedMat.HasProperty("_BaseColor"))
-                            instantiatedMat.SetColor("_BaseColor", Color.orange);
-                        else
-                            instantiatedMat.SetColor("_Color", Color.orange);
-
-                        renderer.material = instantiatedMat;
-                    }
+                    collider.enabled = false;
+                }
+                transform.Find("Plane").gameObject.SetActive(false);
+                transform.Find("Plane (1)").gameObject.SetActive(false);
+            }
+            else
+            {
+                if (TryGetComponent<MeshRenderer>(out var meshRenderer))
+                {
+                    meshRenderer.enabled = false;
                 }
             }
 
             GameObject player = GameObject.Find("Valid Spot");
-            localPlayerTransform = player.transform;
+            GameObject PlayerRot = GameObject.Find("First Person Character");
+            localPlayerTransformforROT1 = GameObject.Find("BallPosition").transform;
 
+            localPlayerTransform = player.transform;
+            localPlayerTransformforROT = PlayerRot.transform;
             if (windPanel != null && !IsHost)
             {
                 windPanel.StopAllCoroutines();
             }
         }
 
+        Vector3 GetPlayerRot()
+        {
+            if (!localPlayerTransformforROT1)
+            {
+                localPlayerTransformforROT1 = GameObject.Find("BallPosition").transform;
+            }
+            if (!localPlayerTransformforROT.gameObject.activeInHierarchy)
+            {
+                if (localPlayerTransformforROT1 != null)
+                {
+                    return localPlayerTransform.rotation.eulerAngles;
+                }
+                return localPlayerTransformforROT1.rotation.eulerAngles;
 
+            } else
+            {
+                return localPlayerTransformforROT.rotation.eulerAngles;
+            }
+            return Vector3.zero;
+        }
 
         void Update()
         {
@@ -123,6 +133,9 @@ namespace NormalGolfGameMultiplayerMod
 
             if (IsLocalPlayer)
             {
+
+                m_NetworkedRot = GetPlayerRot();
+
                 m_NetworkedPosition = localPlayerTransform.position;
                 if (m_TickTimer >= m_TickInterval)
                 {
@@ -131,19 +144,19 @@ namespace NormalGolfGameMultiplayerMod
                     SendStateToLobby(m_CurrentLobbyID, m_CurrentNetworkTick);
                 }
                 transform.position = localPlayerTransform.position;
+                transform.eulerAngles = GetPlayerRot();
                 m_TickTimer += Time.deltaTime;
             }
             else {
                 transform.position = Vector3.SmoothDamp(transform.position, m_NetworkedPositionTarget, ref m_Posvelocity, m_TickInterval);
 
+                transform.eulerAngles = m_NetworkedRot;
                 windPanel.m_currentWind = Vector2.SmoothDamp(windPanel.m_currentWind, m_NetworkedWindTarget, ref m_Windvelocity, m_TickInterval);
             }
         }
 
 
-
-
-        // Data Sending and Receiving --------------------------------------------------------------------------------------------------------------------------
+        // Data Sending and Receiving ----------------------------------------------------------------------------------------------
         private void SendStateToLobby(CSteamID lobbyId, uint TickNumber)
         {
             int memberCount = SteamMatchmaking.GetNumLobbyMembers(lobbyId);
@@ -158,7 +171,9 @@ namespace NormalGolfGameMultiplayerMod
             Buffer.BlockCopy(BitConverter.GetBytes(m_NetworkedWind.x), 0, _sendBuffer, 13, 4);
             Buffer.BlockCopy(BitConverter.GetBytes(m_NetworkedWind.y), 0, _sendBuffer, 17, 4);
 
-            Buffer.BlockCopy(BitConverter.GetBytes(TickNumber), 0, _sendBuffer, 21, 4);
+            Buffer.BlockCopy(BitConverter.GetBytes(m_NetworkedRot.y), 0, _sendBuffer, 21, 4);
+
+            Buffer.BlockCopy(BitConverter.GetBytes(TickNumber), 0, _sendBuffer, 25, 4);
 
             GCHandle handle = GCHandle.Alloc(_sendBuffer, GCHandleType.Pinned);
 
@@ -211,20 +226,203 @@ namespace NormalGolfGameMultiplayerMod
             float windY = BitConverter.ToSingle(packet, 17);
             Vector2 receivedWind = new Vector2(windX, windY);
 
-            uint Tick = BitConverter.ToUInt32(packet, 21);
+
+            float PlayerY = BitConverter.ToSingle(packet, 21);
+
+            uint Tick = BitConverter.ToUInt32(packet, 25);
 
             if (m_CurrentNetworkTick < Tick)
             {
-                ApplyNetworkState(receivedPosition, receivedWind, Tick);
+                ApplyNetworkState(receivedPosition, receivedWind, Tick, PlayerY);
             }
         }
 
-        private void ApplyNetworkState(Vector3 position, Vector2 wind, uint tick)
+        private void ApplyNetworkState(Vector3 position, Vector2 wind, uint tick, float PlayerY)
         {
             m_CurrentNetworkTick = tick;
             m_NetworkedPositionTarget = position;
             m_NetworkedWindTarget = wind;
+            m_NetworkedRot = new Vector3(0, PlayerY, 0);
         }
+        //--------------------------------------------------------------------------------------------------------------------------
+
+
+
+        // Sound Sending and Receiving ---------------------------------------------------------------------------------------------
+        public void UnpackSoundPayload(byte[] packet)
+        {
+            Debug.Log("[NormalGolfGameMultiplayer] Received sound packet with ID: " + packet[1]);
+            byte soundID = packet[1];
+            PlayPlayerSound(soundID);
+        }
+
+        public void PlayPlayerSound(byte soundID)
+        {
+            Sound sound = Globals.PlayerSounds[soundID];
+            Debug.Log("[NormalGolfGameMultiplayer] Playing sound: " + sound.m_name);
+            switch (sound.m_name)
+            {
+                case "gong":
+                    PlaySoundLocaly(sound, false); 
+                    break;
+                case "restart":
+                    PlaySoundLocaly(sound);
+                    break;
+                case "golf_in":
+                    PlaySoundLocaly(sound);
+                    break;
+                case "golf_out":
+                    PlaySoundLocaly(sound);
+                    break;
+                case "cash":
+                    PlaySoundLocaly(sound);
+                    break;
+                case "treeHit": // Ideally this should be played on the GhostBall, but I don't feel like coding that right now.
+                    PlaySoundLocaly(sound);
+                    break;
+                case "ballInHole": // Ideally this should be played on the GhostBall, but I don't feel like coding that right now.
+                    PlaySoundLocaly(sound);
+                    break;
+                case "splash": // Ideally this should be played on the GhostBall, but I don't feel like coding that right now. (this one is 2d bc it might sound better)
+                    PlaySoundLocaly(sound, false);
+                    break;
+                case "error":
+                    PlaySoundLocaly(sound);
+                    break;
+                case "ironHit":
+                    PlaySoundLocaly(sound);
+                    break;
+                case "driverHit":
+                    PlaySoundLocaly(sound);
+                    break;
+                case "hybridHit":
+                    PlaySoundLocaly(sound);
+                    break;
+                case "putterHit":
+                    PlaySoundLocaly(sound);
+                    break;
+                case "ironSwing":
+                    PlaySoundLocaly(sound);
+                    break;
+                case "driverSwing":
+                    PlaySoundLocaly(sound);
+                    break;
+                case "skim":
+                    PlaySoundLocaly(sound, false);
+                    break;
+                case "par":
+                    PlaySoundLocaly(sound, false);
+                    break;
+                case "birdie":
+                    PlaySoundLocaly(sound, false);
+                    break;
+                case "eagle":
+                    PlaySoundLocaly(sound, false);
+                    break;
+                case "doublebogey":
+                    PlaySoundLocaly(sound, false);
+                    break;
+                case "bogey":
+                    PlaySoundLocaly(sound, false);
+                    break;
+                case "teleStart":
+                    PlaySoundLocaly(sound);
+                    break;
+                case "teleFinish":
+                    PlaySoundLocaly(sound);
+                    break;
+                case "elevatorDing":
+                    PlaySoundLocaly(sound);
+                    break;
+                case "elevatorDoor":
+                    PlaySoundLocaly(sound);
+                    break;
+                case "padlockBreak":
+                    PlaySoundLocaly(sound);
+                    break;
+                case "mulligan":
+                    PlaySoundLocaly(sound);
+                    break;
+                case "serverCut":
+                    PlaySoundLocaly(sound);
+                    break;
+                case "rangeFinderIn":
+                    PlaySoundLocaly(sound);
+                    break;
+                case "rangeFinderOut":
+                    PlaySoundLocaly(sound);
+                    break;
+                default:
+                    return;
+            }
+        }
+
+        private void PlaySoundLocaly(Sound sound, bool is3d = true)
+        {
+            if (is3d)
+            {
+                sound.m_source.transform.position = gameObject.transform.position;
+            }
+
+            sound.m_source.spatialBlend = is3d ? 1f : 0f;
+
+            sound.m_source.rolloffMode = AudioRolloffMode.Linear;
+            sound.m_source.minDistance = 1;
+            sound.m_source.maxDistance = 30;
+            // This should be multipied by m_SFXMasterLevelTweak but I can't access that from here.
+            sound.m_source.volume = UnityEngine.Random.Range(sound.m_minVolume, sound.m_maxVolume);
+
+            sound.m_source.pitch = UnityEngine.Random.Range(sound.m_minPitch, sound.m_maxPitch);
+            sound.m_source.PlayOneShot(sound.m_clip);
+        }
+
+        public void SendPlayerSoundToLobby(byte soundID)
+        {
+            int memberCount = SteamMatchmaking.GetNumLobbyMembers(m_CurrentLobbyID);
+            if (memberCount <= 1) return;
+
+            _soundBuffer[0] = 1;
+            _soundBuffer[1] = soundID;
+
+
+            GCHandle handle = GCHandle.Alloc(_soundBuffer, GCHandleType.Pinned);
+
+            try
+            {
+                IntPtr ptr = handle.AddrOfPinnedObject();
+                CSteamID mySteamId = SteamUser.GetSteamID();
+
+                for (int i = 0; i < memberCount; i++)
+                {
+                    CSteamID memberId = SteamMatchmaking.GetLobbyMemberByIndex(m_CurrentLobbyID, i);
+
+
+                    if (memberId != mySteamId)
+                    {
+
+                        SteamNetworkingIdentity targetIdentity = new SteamNetworkingIdentity();
+                        targetIdentity.SetSteamID(memberId);
+
+                        SteamNetworkingMessages.SendMessageToUser(
+                            ref targetIdentity,
+                            ptr,
+                            (uint)_soundBuffer.Length,
+                            Constants.k_nSteamNetworkingSend_Reliable,
+                            2
+                        );
+                    }
+                }
+            }
+            finally
+            {
+
+                if (handle.IsAllocated)
+                {
+                    handle.Free();
+                }
+            }
+        }
+        //--------------------------------------------------------------------------------------------------------------------------
 
     }
 }
