@@ -16,7 +16,7 @@ This is a Multiplayer Mod for Luke Muscat's newest game, [Normal Golf Game](http
 - ~~Luke may or may not be the right size~~
 
 ## How to use
-After installing the mod via the releases page (when I create one), hit F1 to open the multiplayer networking menu while in the main game level.
+After installing the mod via the [releases page](https://github.com/Mr-milky-way/NormalGolfGameMultiplayerMod/releases/latest), hit F1 to open the multiplayer networking menu while in the main game level.
 you will be met with 2 options
 - Host game
 - Join game
@@ -26,10 +26,3 @@ If you want to host a game, hit host game, then reopen the menu and copy the roo
 
 ## Joining
 If you want to join a game enter the games room code into the top text box, hit join game, then wait for it to load.
-
-
-
-
----
-> [!NOTE]
-> Check Main.cs for a dev note
