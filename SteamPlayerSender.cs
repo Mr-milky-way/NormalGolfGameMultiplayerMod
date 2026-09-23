@@ -5,6 +5,7 @@ using Steamworks;
 using System;
 using System.Runtime.InteropServices;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace NormalGolfGameMultiplayerMod
 {
@@ -66,7 +67,13 @@ namespace NormalGolfGameMultiplayerMod
             {
                 Globals.LocalPlayerSender = this;
             }
+
             windPanel = GameObject.FindAnyObjectByType<WindPanel>();
+            if (windPanel != null && !IsHost)
+            {
+                windPanel.StopAllCoroutines();
+            }
+
 
             if (IsLocalPlayer)
             {
@@ -91,27 +98,43 @@ namespace NormalGolfGameMultiplayerMod
             }
 
             GameObject player = GameObject.Find("Valid Spot");
-            GameObject PlayerRot = GameObject.Find("First Person Character");
-            localPlayerTransformforROT1 = GameObject.Find("BallPosition").transform;
-
             localPlayerTransform = player.transform;
-            localPlayerTransformforROT = PlayerRot.transform;
-            if (windPanel != null && !IsHost)
+
+
+
+            GameObject ballPosition = GameObject.Find("BallPosition");
+            if (ballPosition)
             {
-                windPanel.StopAllCoroutines();
+                localPlayerTransformforROT1 = ballPosition.transform;
+            }
+
+            GameObject FPC = GameObject.Find("First Person Character");
+            if (FPC)
+            {
+                localPlayerTransformforROT = FPC.transform;
             }
         }
 
         Vector3 GetPlayerRot()
         {
-            if (!localPlayerTransformforROT1)
+            if (!localPlayerTransformforROT)
             {
-                localPlayerTransformforROT1 = GameObject.Find("BallPosition").transform;
+                GameObject FPC = GameObject.Find("First Person Character");
+                if (FPC)
+                {
+                    localPlayerTransformforROT = FPC.transform;
+                }
             }
             if (!localPlayerTransformforROT.gameObject.activeInHierarchy)
             {
                 if (localPlayerTransformforROT1 != null)
                 {
+                    GameObject ballPosition = GameObject.Find("BallPosition");
+                    if (ballPosition)
+                    {
+                        localPlayerTransformforROT1 = ballPosition.transform;
+                    }
+
                     return localPlayerTransform.rotation.eulerAngles;
                 }
                 return localPlayerTransformforROT1.rotation.eulerAngles;
