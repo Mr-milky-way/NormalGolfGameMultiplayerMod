@@ -1,7 +1,9 @@
 ﻿#if STEAMWORKS
+using HarmonyLib;
 using Steamworks;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using UnityEngine;
@@ -23,7 +25,7 @@ namespace NormalGolfGameMultiplayerMod
         private Callback<LobbyDataUpdate_t> m_LobbyDataUpdateCallback;
 
         // Room Generation/Search
-        [SerializeField] private const string m_MOD_FILTER_KEY = "NGGMM1.0.0"; // This should be changed to the build data or version so people in different versions of the game can't join each other
+        [SerializeField] private const string m_MOD_FILTER_KEY = "NGGMM0.1.0"; // This should be changed to the build data or version so people in different versions of the game can't join each other
 
         [SerializeField] private int m_RoomCodeLength = 6;
         private const string m_Characters = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -38,12 +40,16 @@ namespace NormalGolfGameMultiplayerMod
         [SerializeField] private GameObject m_BallPrefab;
         [SerializeField] private GameObject m_PlayerPrefab;
 
+        private Color[] PlayerColors = { Color.red, Color.green, Color.turquoise, Color.purple };
+
 
         private Dictionary<CSteamID, GameObject> m_activePlayerAvatars = new Dictionary<CSteamID, GameObject>();
         private Dictionary<CSteamID, SteamBallPosSender> m_activePlayerBalls = new Dictionary<CSteamID, SteamBallPosSender>();
 
         [SerializeField] private CSteamID m_CurrentLobbyID;
-        [SerializeField] private CSteamID m_CurrentLobbyOwnerID;
+        [SerializeField] public CSteamID m_CurrentLobbyOwnerID;
+
+        private CSteamID localPlayerID;
 
         //[SerializeField] private CSteamID m_CurrentTurnPlayerID;
 
@@ -60,7 +66,7 @@ namespace NormalGolfGameMultiplayerMod
 
         void Start ()
         {
-
+            localPlayerID = SteamUser.GetSteamID();
             // Checks the command line arguments for a lobby ID to join, if present
             // This allows for joining a lobby directly from the Steam overlay via the little join button even when the game is closed
             var args = System.Environment.GetCommandLineArgs();
@@ -100,11 +106,22 @@ namespace NormalGolfGameMultiplayerMod
 
         }
 
+        private bool isDropdownOpen = false;
+        private int selectedIndex = 0;
+        private string[] options = { "Normal Scoring", "NSSG" };
         private void OnGUI()
         {
             if (!m_showNetworkingMenu) return;
             if (SaveManager.instance.m_gamemodeState.mode == GameMode.Story) return;
 
+            float baseWidth = 1920f;
+            float baseHeight = 1080f;
+
+            float scaleX = (float)Screen.width / baseWidth;
+            float scaleY = (float)Screen.height / baseHeight;
+
+            Matrix4x4 svMat = GUI.matrix;
+            GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(scaleX, scaleY, 1f));
 
             GUI.Box(new Rect(10, 10, 220, 190), "Network Menu (F1)");
 
@@ -124,15 +141,45 @@ namespace NormalGolfGameMultiplayerMod
                 FindNGGLobbies(m_CurrentLobbyCodeEnterThingy);
             }
 
+            Rect dropdownRect = new Rect(20, 190, 200, 40);
+            if (GUI.Button(dropdownRect, $"Choose: {options[selectedIndex]}"))
+            {
+                isDropdownOpen = !isDropdownOpen;
+            }
+
             if (m_CurrentLobbyCode != null)
             {
-                GUI.Label(new Rect(20, 180, 200, 40), $"Room Code: {m_CurrentLobbyCode}");
+                GUI.Label(new Rect(20, 240, 200, 30), $"Room Code: {m_CurrentLobbyCode}");
 
-                if (GUI.Button(new Rect(20, 220, 200, 40), "Copy"))
+                if (GUI.Button(new Rect(20, 270, 200, 40), "Copy"))
                 {
                     GUIUtility.systemCopyBuffer = m_CurrentLobbyCode;
                 }
+            }
 
+            if (isDropdownOpen)
+            {
+                float itemHeight = 30f;
+
+                GUI.Box(new Rect(dropdownRect.x, dropdownRect.yMax, dropdownRect.width, options.Length * itemHeight), "");
+
+                for (int i = 0; i < options.Length; i++)
+                {
+                    Rect itemRect = new Rect(dropdownRect.x, dropdownRect.yMax + (i * itemHeight), dropdownRect.width, itemHeight);
+                    if (GUI.Button(itemRect, options[i]))
+                    {
+                        selectedIndex = i;
+                        isDropdownOpen = false;
+                    }
+                }
+            }
+
+            if (Globals.IsLobbyHost && Globals.CurrentMode == MultiplayerMode.NSSG)
+            {
+                if (GUI.Button(new Rect(20, 320, 200, 40), "Start NSSG"))
+                {
+                    Globals.LocalScoreTracker.StartNSSGMode();
+                }
             }
         }
 
@@ -189,6 +236,7 @@ namespace NormalGolfGameMultiplayerMod
 
         private void Update()
         {
+            Globals.m_CurrentLobbyID = m_CurrentLobbyID;
             if (SceneManager.GetActiveScene().name != "Main")
             {
                 m_showNetworkingMenu = false;
@@ -245,6 +293,10 @@ namespace NormalGolfGameMultiplayerMod
             SteamMatchmaking.SetLobbyData(lobbyID, "host_name", SteamFriends.GetPersonaName());
 
             SteamMatchmaking.SetLobbyData(lobbyID, "mode", SaveManager.instance.m_gamemodeState.mode.ToString());
+
+            MultiplayerMode mode = (MultiplayerMode)selectedIndex;
+            Globals.CurrentMode = mode;
+            SteamMatchmaking.SetLobbyData(lobbyID, "mode2", mode.ToString());
 
             m_CurrentLobbyCode = GenerateRoomCode(m_RoomCodeLength);
             SteamMatchmaking.SetLobbyData(lobbyID, "room_code", m_CurrentLobbyCode);
@@ -303,6 +355,14 @@ namespace NormalGolfGameMultiplayerMod
                 Globals.SteamSaveObjectSync.m_CurrentLobbyID = lobbyID;
                 Globals.SteamSaveObjectSync.m_HostSteamId = m_CurrentLobbyOwnerID;
 
+                string mode = SteamMatchmaking.GetLobbyData(lobbyID, "mode2");
+
+                Debug.Log($"[NormalGolfGameMultiplayer] Lobby mode: {mode}");
+
+                Enum.TryParse(mode, out MultiplayerMode mode2);
+
+                Globals.CurrentMode = mode2;
+
                 UpdateLobbyMembers();
             }
             else
@@ -321,12 +381,17 @@ namespace NormalGolfGameMultiplayerMod
                 Debug.Log("[NormalGolfGameMultiplayer] Player Joined:" + callback.m_ulSteamIDUserChanged);
 
                 Globals.SteamSaveObjectSync.m_NeedsSending = true;
+                Globals.LocalScoreTracker.AddPlayerToScoreCard((CSteamID)callback.m_ulSteamIDUserChanged);
 
                 UpdateLobbyMembers();
             }
             if (stateChange == (uint)EChatMemberStateChange.k_EChatMemberStateChangeLeft)
             {
                 Debug.Log("[NormalGolfGameMultiplayer] Player Left:" + callback.m_ulSteamIDUserChanged);
+                if (callback.m_ulSteamIDUserChanged == (ulong)m_CurrentLobbyOwnerID)
+                {
+                    SceneManager.LoadScene("Menu2");
+                }
                 RemovePlayerAvatar((CSteamID)callback.m_ulSteamIDUserChanged);
             }
 
@@ -453,6 +518,24 @@ namespace NormalGolfGameMultiplayerMod
                         }
                     }
                 }
+
+                if (message.m_cbSize == 17)
+                {
+                    byte[] packet = new byte[17];
+                    Marshal.Copy(message.m_pData, packet, 0, 17);
+
+                    if (packet[0] == 2)
+                    {
+                        CSteamID senderSteamID = message.m_identityPeer.GetSteamID();
+                        if (m_activePlayerBalls.TryGetValue(senderSteamID, out SteamBallPosSender Ball))
+                        {
+                            if (Ball != null)
+                            {
+                                Ball.SetTrailColour(packet);
+                            }
+                        }
+                    }
+                }
                 SteamNetworkingMessage_t.Release(msgPtr);
             }
 
@@ -524,6 +607,31 @@ namespace NormalGolfGameMultiplayerMod
                 SteamNetworkingMessage_t.Release(msgPtr);
             }
 
+
+
+
+
+            messageCount = SteamNetworkingMessages.ReceiveMessagesOnChannel(3, messagePtrs, messagePtrs.Length);
+
+            for (int i = 0; i < messageCount; i++)
+            {
+                IntPtr msgPtr = messagePtrs[i];
+                SteamNetworkingMessage_t message = Marshal.PtrToStructure<SteamNetworkingMessage_t>(msgPtr);
+
+
+                if (message.m_cbSize == 3)
+                {
+                    byte[] packet = new byte[3];
+                    Marshal.Copy(message.m_pData, packet, 0, 3);
+
+                    if (packet[0] == 0)
+                    {
+                        CSteamID senderSteamID = message.m_identityPeer.GetSteamID();
+                        Globals.LocalScoreTracker.UnpackScorePayload(packet, senderSteamID);
+                    }
+                }
+                SteamNetworkingMessage_t.Release(msgPtr);
+            }
         }
 
 
@@ -534,9 +642,25 @@ namespace NormalGolfGameMultiplayerMod
             m_CurrentLobbyOwnerID = SteamMatchmaking.GetLobbyOwner(m_CurrentLobbyID);
             int currentMemberCount = SteamMatchmaking.GetNumLobbyMembers(m_CurrentLobbyID);
 
+
+            List<CSteamID> currentIDs = new List<CSteamID>();
             for (int i = 0; i < currentMemberCount; i++)
             {
                 CSteamID memberID = SteamMatchmaking.GetLobbyMemberByIndex(m_CurrentLobbyID, i);
+                if (memberID != CSteamID.Nil)
+                {
+                    currentIDs.Add(memberID);
+                }
+            }
+
+            List<CSteamID> sortedIDs = currentIDs
+                .OrderByDescending(id => id == m_CurrentLobbyOwnerID)
+                .ThenBy(id => id.m_SteamID)
+                .ToList();
+
+            for (int i = 0; i < sortedIDs.Count; i++)
+            {
+                CSteamID memberID = sortedIDs[i];
 
                 if (!m_activePlayerAvatars.ContainsKey(memberID))
                 {
@@ -553,8 +677,13 @@ namespace NormalGolfGameMultiplayerMod
 
                     SteamBallPosSender BallSender = Ball.AddComponent<SteamBallPosSender>();
                     BallSender.SetPlayerData(memberID, m_CurrentLobbyID, m_CurrentLobbyOwnerID);
+                    BallSender.SetTrailColour(PlayerColors[i]);
 
                     m_activePlayerBalls.Add(memberID, BallSender);
+                } else
+                {
+                    SteamBallPosSender Ball = m_activePlayerBalls.GetValueSafe(memberID);
+                    Ball.SetTrailColour(PlayerColors[i]);
                 }
             }
         }

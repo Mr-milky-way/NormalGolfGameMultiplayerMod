@@ -125,9 +125,9 @@ namespace NormalGolfGameMultiplayerMod
                     localPlayerTransformforROT = FPC.transform;
                 }
             }
-            if (!localPlayerTransformforROT.gameObject.activeInHierarchy)
+            if (localPlayerTransformforROT && !localPlayerTransformforROT.gameObject.activeInHierarchy)
             {
-                if (localPlayerTransformforROT1 != null)
+                if (!localPlayerTransformforROT1)
                 {
                     GameObject ballPosition = GameObject.Find("BallPosition");
                     if (ballPosition)
@@ -135,7 +135,7 @@ namespace NormalGolfGameMultiplayerMod
                         localPlayerTransformforROT1 = ballPosition.transform;
                     }
 
-                    return localPlayerTransform.rotation.eulerAngles;
+                    return localPlayerTransformforROT.rotation.eulerAngles;
                 }
                 return localPlayerTransformforROT1.rotation.eulerAngles;
 

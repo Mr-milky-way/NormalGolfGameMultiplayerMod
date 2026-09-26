@@ -6,6 +6,7 @@ using System;
 using System.Collections;
 using System.IO;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -84,8 +85,19 @@ namespace NormalGolfGameMultiplayerMod
         public static Sound[] PlayerSounds;
         public static SteamBallPosSender LocalBallSender;
         public static SteamPlayerSender LocalPlayerSender;
+        public static ScoreTracker LocalScoreTracker;
+        public static CSteamID m_CurrentLobbyID;
+        public static MultiplayerMode CurrentMode;
 #endif
     }
+
+
+    public enum MultiplayerMode
+    {
+        NormalScoring = 0,
+        NSSG = 1
+    }
+
 
     [BepInPlugin("Mr-Milky-Way.NormalGolfGameMultiplayer", "NormalGolfGameMultiplayer", "0.1.0")]
     public class Plugin : BaseUnityPlugin
@@ -140,6 +152,8 @@ namespace NormalGolfGameMultiplayerMod
 #if STEAMWORKS
             SteamNetworkManager SNM = roomsObject.AddComponent<SteamNetworkManager>();
             SteamSaveObjectSync SSOS = roomsObject.AddComponent<SteamSaveObjectSync>();
+            ScoreTracker ST = roomsObject.AddComponent<ScoreTracker>();
+            Globals.LocalScoreTracker = ST;
             Globals.SteamSaveObjectSync = SSOS;
             UnityEngine.Object.DontDestroyOnLoad(roomsObject);
 #endif
@@ -169,6 +183,45 @@ namespace NormalGolfGameMultiplayerMod
     }
 
 #if STEAMWORKS
+
+    [HarmonyPatch(typeof(LMUGC), "CompleteHole")]
+    class CompleteHolePatch
+    {
+        static bool Prefix(LMUGC __instance, string id, int score)
+        {
+            int hole = ExtractNumber(id);
+            if (hole > 0) {
+                if (Globals.IsInLobby)
+                {
+                    Globals.LocalScoreTracker.SendScoreToLobby(Globals.m_CurrentLobbyID, (byte)(hole - 1), (byte)score);
+                }
+            }
+            return true;
+        }
+        static private int ExtractNumber(string input)
+        {
+            Match match = Regex.Match(input, "\\d+");
+            if (!match.Success)
+            {
+                return -1;
+            }
+            return int.Parse(match.Value);
+        }
+    }
+
+    [HarmonyPatch(typeof(LMUGC), "StartChallenge")]
+    class StartChallengePatch
+    {
+        static bool Prefix()
+        {
+            if (Globals.IsInLobby)
+            {
+                Globals.LocalScoreTracker.SendScoreToLobby(Globals.m_CurrentLobbyID, (byte)(255), (byte)255);
+            }
+            return true;
+        }
+    }
+
     [HarmonyPatch(typeof(Ball), "PlayCollisionSound")]
     class BallSoundSyncPatch
     {
@@ -203,6 +256,18 @@ namespace NormalGolfGameMultiplayerMod
             if (Globals.BallSounds == null)
             {
                 Globals.BallSounds = ___m_ballCollisionSoundPairs;
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(Ball), "SetTrailColour")]
+    class BallSetTrailColourPatch
+    {
+        static void Postfix(Color c)
+        {
+            if (Globals.IsInLobby)
+            {
+                Globals.LocalBallSender.SendColorToLobby(Globals.m_CurrentLobbyID, c);
             }
         }
     }

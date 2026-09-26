@@ -24,6 +24,7 @@ namespace NormalGolfGameMultiplayerMod
 
         // Data buffers for sending and receiving network data ---------------------------------------------------------------------
         private readonly byte[] _sendBuffer = new byte[21];
+        private readonly byte[] _ColorSendBuffer = new byte[17];
         private readonly byte[] _soundBuffer = new byte[6];
         //--------------------------------------------------------------------------------------------------------------------------
 
@@ -70,17 +71,16 @@ namespace NormalGolfGameMultiplayerMod
                     {
                         meshRenderer.enabled = false;
                     }
-
-                    if (TryGetComponent<Collider>(out var collider))
-                    {
-                        collider.enabled = false;
-                    }
                     transform.GetChild(0).gameObject.SetActive(false);
                 }
                 else
                 {
                     tr = transform.GetChild(0).GetComponent<TrailRenderer>();
                 }
+            }
+            if (TryGetComponent<Collider>(out var collider))
+            {
+                collider.enabled = false;
             }
 
             Ball player = GameObject.FindAnyObjectByType<Ball>();
@@ -111,6 +111,56 @@ namespace NormalGolfGameMultiplayerMod
         }
 
         // Data Sending and Receiving ----------------------------------------------------------------------------------------------
+        public void SendColorToLobby(CSteamID lobbyId, Color c)
+        {
+            int memberCount = SteamMatchmaking.GetNumLobbyMembers(lobbyId);
+            if (memberCount <= 1) return;
+            _ColorSendBuffer[0] = 3; 
+
+            Buffer.BlockCopy(BitConverter.GetBytes(c.r), 0, _ColorSendBuffer, 1, 4);
+            Buffer.BlockCopy(BitConverter.GetBytes(c.g), 0, _ColorSendBuffer, 5, 4);
+            Buffer.BlockCopy(BitConverter.GetBytes(c.b), 0, _ColorSendBuffer, 9, 4);
+            Buffer.BlockCopy(BitConverter.GetBytes(c.a), 0, _ColorSendBuffer, 13, 4);
+
+
+            GCHandle handle = GCHandle.Alloc(_ColorSendBuffer, GCHandleType.Pinned);
+
+            try
+            {
+                IntPtr ptr = handle.AddrOfPinnedObject();
+                CSteamID mySteamId = SteamUser.GetSteamID();
+
+                for (int i = 0; i < memberCount; i++)
+                {
+                    CSteamID memberId = SteamMatchmaking.GetLobbyMemberByIndex(lobbyId, i);
+
+
+                    if (memberId != mySteamId)
+                    {
+
+                        SteamNetworkingIdentity targetIdentity = new SteamNetworkingIdentity();
+                        targetIdentity.SetSteamID(memberId);
+
+                        SteamNetworkingMessages.SendMessageToUser(
+                            ref targetIdentity,
+                            ptr,
+                            (uint)_ColorSendBuffer.Length,
+                            Constants.k_nSteamNetworkingSend_Reliable,
+                            0
+                        );
+                    }
+                }
+            }
+            finally
+            {
+
+                if (handle.IsAllocated)
+                {
+                    handle.Free();
+                }
+            }
+        }
+
         private void SendStateToLobby(CSteamID lobbyId, uint TickNumber)
         {
             int memberCount = SteamMatchmaking.GetNumLobbyMembers(lobbyId);
@@ -206,6 +256,27 @@ namespace NormalGolfGameMultiplayerMod
                 tr.Clear();
             }
         }
+
+        public void SetTrailColour(byte[] packet)
+        {
+            float R = BitConverter.ToSingle(packet, 1);
+            float G = BitConverter.ToSingle(packet, 5);
+            float B = BitConverter.ToSingle(packet, 9);
+            float A = BitConverter.ToSingle(packet, 13);
+
+            Color C = new Color(R, G, B, A);
+
+            tr.startColor = C;
+            tr.endColor = C;
+        }
+
+        public void SetTrailColour(Color C)
+        {
+            tr.startColor = C;
+            tr.endColor = C;
+        }
+
+
         //--------------------------------------------------------------------------------------------------------------------------
 
         /* Not in use
