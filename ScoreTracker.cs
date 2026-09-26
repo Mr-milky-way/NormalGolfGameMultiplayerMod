@@ -5,7 +5,6 @@ using Steamworks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
 using UnityEngine;
@@ -57,9 +56,9 @@ namespace NormalGolfGameMultiplayerMod
         public void StartNSSGMode()
         {
 
-            if (Globals.IsLobbyHost)
+            if (Globals.IsLobbyHost && Globals.IsInLobby)
             {
-                SendScoreToLobby(Globals.m_CurrentLobbyID, 255, 0);
+                SendScoreToLobby(Globals.m_CurrentLobbyID, (byte)255, (byte)0);
             }
 
             PanelManager.instance.m_LMUGCPanel.CompleteNormalGolfRound();
@@ -77,7 +76,7 @@ namespace NormalGolfGameMultiplayerMod
 
         private void Update()
         {
-            if (Input.GetKeyDown(KeyCode.F2))
+            if (Globals.ScoreMenuConfig.Value.IsDown())
             {
                 m_showScoreCard = !m_showScoreCard;
             }
@@ -250,7 +249,17 @@ namespace NormalGolfGameMultiplayerMod
             {
                 int totalScore = 0;
                 GUILayout.BeginHorizontal(GUI.skin.box);
-                GUILayout.Label(name, GUILayout.Width(150));
+
+                Rect boxRect = GUILayoutUtility.GetRect(20, 20, GUILayout.ExpandWidth(false));
+
+                Color oldColor = GUI.color;
+
+                GUI.color = c;
+                GUI.DrawTexture(boxRect, Texture2D.whiteTexture);
+
+                GUI.color = oldColor;
+
+                GUILayout.Label( "  " + name, GUILayout.Width(130));
                 for (int i = 0; i < 9; i++)
                 {
                     string score = "-";
@@ -316,7 +325,7 @@ namespace NormalGolfGameMultiplayerMod
 
         private void ChangeScoring(byte hole, byte score)
         {
-            if (hole != 255 && score != 255)
+            if (hole != 255 && score != 255 || hole != 255 && score != 0)
             {
                 if (Globals.CurrentMode == MultiplayerMode.NSSG)
                 {
@@ -437,7 +446,7 @@ namespace NormalGolfGameMultiplayerMod
 
         private void ApplyScore(int hole, int score, CSteamID PlayerID)
         {
-            if (hole == 255 && score == 0)
+            if (hole == 255 && score == 0 && !Globals.IsLobbyHost)
             {
                 StartNSSGMode();
                 return;

@@ -3,11 +3,13 @@ using HarmonyLib;
 using Steamworks;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using static UnityEngine.Scripting.GarbageCollector;
 using static UnityEngine.TouchScreenKeyboard;
 
 namespace NormalGolfGameMultiplayerMod
@@ -25,7 +27,7 @@ namespace NormalGolfGameMultiplayerMod
         private Callback<LobbyDataUpdate_t> m_LobbyDataUpdateCallback;
 
         // Room Generation/Search
-        [SerializeField] private const string m_MOD_FILTER_KEY = "NGGMM0.1.0"; // This should be changed to the build data or version so people in different versions of the game can't join each other
+        [SerializeField] private const string m_MOD_FILTER_KEY = "NGGMM0.2.0"; // This should be changed to the build data or version so people in different versions of the game can't join each other
 
         [SerializeField] private int m_RoomCodeLength = 6;
         private const string m_Characters = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -53,6 +55,10 @@ namespace NormalGolfGameMultiplayerMod
 
         //[SerializeField] private CSteamID m_CurrentTurnPlayerID;
 
+
+        bool syncDiff = true;
+
+        private float m_LobbyUpateTimer = 0f;
 
         private CSteamID m_PendingOverlayLobby = CSteamID.Nil;
 
@@ -123,62 +129,80 @@ namespace NormalGolfGameMultiplayerMod
             Matrix4x4 svMat = GUI.matrix;
             GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(scaleX, scaleY, 1f));
 
-            GUI.Box(new Rect(10, 10, 220, 190), "Network Menu (F1)");
 
-
-            GUI.Label(new Rect(20, 40, 200, 20), "Room Name:");
-            m_CurrentLobbyCodeEnterThingy = GUI.TextField(new Rect(20, 60, 200, 30), m_CurrentLobbyCodeEnterThingy);
-
-
-            if (GUI.Button(new Rect(20, 100, 200, 40), "Host Game"))
+            if (!Globals.IsInLobby)
             {
-                CreateNGGLobby();
-            }
+                GUI.Box(new Rect(10, 10, 220, 250), "Network Menu (F1)");
+
+                GUI.Label(new Rect(20, 40, 200, 20), "Room Name:");
+                m_CurrentLobbyCodeEnterThingy = GUI.TextField(new Rect(20, 60, 200, 30), m_CurrentLobbyCodeEnterThingy);
 
 
-            if (GUI.Button(new Rect(20, 140, 200, 40), "Join Game"))
-            {
-                FindNGGLobbies(m_CurrentLobbyCodeEnterThingy);
-            }
-
-            Rect dropdownRect = new Rect(20, 190, 200, 40);
-            if (GUI.Button(dropdownRect, $"Choose: {options[selectedIndex]}"))
-            {
-                isDropdownOpen = !isDropdownOpen;
-            }
-
-            if (m_CurrentLobbyCode != null)
-            {
-                GUI.Label(new Rect(20, 240, 200, 30), $"Room Code: {m_CurrentLobbyCode}");
-
-                if (GUI.Button(new Rect(20, 270, 200, 40), "Copy"))
+                if (GUI.Button(new Rect(20, 100, 200, 40), "Host Game"))
                 {
-                    GUIUtility.systemCopyBuffer = m_CurrentLobbyCode;
+                    CreateNGGLobby();
                 }
-            }
 
-            if (isDropdownOpen)
-            {
-                float itemHeight = 30f;
 
-                GUI.Box(new Rect(dropdownRect.x, dropdownRect.yMax, dropdownRect.width, options.Length * itemHeight), "");
-
-                for (int i = 0; i < options.Length; i++)
+                if (GUI.Button(new Rect(20, 140, 200, 40), "Join Game"))
                 {
-                    Rect itemRect = new Rect(dropdownRect.x, dropdownRect.yMax + (i * itemHeight), dropdownRect.width, itemHeight);
-                    if (GUI.Button(itemRect, options[i]))
+                    FindNGGLobbies(m_CurrentLobbyCodeEnterThingy);
+                }
+
+
+                syncDiff = GUI.Toggle(new Rect(20, 240, 200, 20), syncDiff, "Enable difficulty Sync");
+
+                Rect dropdownRect = new Rect(20, 190, 200, 40);
+                if (GUI.Button(dropdownRect, $"Choose: {options[selectedIndex]}"))
+                {
+                    isDropdownOpen = !isDropdownOpen;
+                }
+
+                if (isDropdownOpen)
+                {
+                    float itemHeight = 30f;
+
+                    GUI.Box(new Rect(dropdownRect.x, dropdownRect.yMax, dropdownRect.width, options.Length * itemHeight), "");
+
+                    for (int i = 0; i < options.Length; i++)
                     {
-                        selectedIndex = i;
-                        isDropdownOpen = false;
+                        Rect itemRect = new Rect(dropdownRect.x, dropdownRect.yMax + (i * itemHeight), dropdownRect.width, itemHeight);
+                        if (GUI.Button(itemRect, options[i]))
+                        {
+                            selectedIndex = i;
+                            isDropdownOpen = false;
+                        }
                     }
                 }
-            }
 
-            if (Globals.IsLobbyHost && Globals.CurrentMode == MultiplayerMode.NSSG)
+            }
+            else
             {
-                if (GUI.Button(new Rect(20, 320, 200, 40), "Start NSSG"))
+                if (Globals.IsLobbyHost && Globals.CurrentMode == MultiplayerMode.NSSG)
                 {
-                    Globals.LocalScoreTracker.StartNSSGMode();
+                    GUI.Box(new Rect(10, 10, 220, 150), "Network Menu (F1)");
+                } else
+                {
+                    GUI.Box(new Rect(10, 10, 220, 100), "Network Menu (F1)");
+                }
+                    
+
+                if (m_CurrentLobbyCode != null)
+                {
+                    GUI.Label(new Rect(20, 40, 200, 30), $"Room Code: {m_CurrentLobbyCode}");
+
+                    if (GUI.Button(new Rect(20, 60, 200, 40), "Copy"))
+                    {
+                        GUIUtility.systemCopyBuffer = m_CurrentLobbyCode;
+                    }
+                }
+
+                if (Globals.IsLobbyHost && Globals.CurrentMode == MultiplayerMode.NSSG)
+                {
+                    if (GUI.Button(new Rect(20, 100, 200, 40), "Start NSSG"))
+                    {
+                        Globals.LocalScoreTracker.StartNSSGMode();
+                    }
                 }
             }
         }
@@ -247,10 +271,36 @@ namespace NormalGolfGameMultiplayerMod
 
             SteamAPI.RunCallbacks();
 
+            if(m_LobbyUpateTimer > 60)
+            {
+                if (Globals.IsLobbyHost && Globals.IsInLobby)
+                {
+                    if (syncDiff)
+                    {
+                        SteamMatchmaking.SetLobbyData(m_CurrentLobbyID, "difficulty", SaveManager.instance.m_gameSettings.m_difficulty.ToString());
+                    }
+                } else if (Globals.IsInLobby)
+                {
+                    if (syncDiff)
+                    {
+                        string dif = SteamMatchmaking.GetLobbyData(m_CurrentLobbyID, "difficulty");
+                        if (dif != "noSync")
+                        {
+                            SaveManager.instance.m_gameSettings.m_difficulty = int.Parse(dif);
+                        }
+                        else
+                        {
+                            syncDiff = false;
+                        }
+                    }
+                }
+            }
+
+            m_LobbyUpateTimer += Time.deltaTime;
 
             ReceiveNetworkMessages();
 
-            if (Input.GetKeyDown(KeyCode.F1))
+            if (Globals.NetworkMenuConfig.Value.IsDown())
             {
                 m_showNetworkingMenu = !m_showNetworkingMenu;
             }
@@ -297,6 +347,13 @@ namespace NormalGolfGameMultiplayerMod
             MultiplayerMode mode = (MultiplayerMode)selectedIndex;
             Globals.CurrentMode = mode;
             SteamMatchmaking.SetLobbyData(lobbyID, "mode2", mode.ToString());
+
+            if (syncDiff) {
+                SteamMatchmaking.SetLobbyData(m_CurrentLobbyID, "difficulty", SaveManager.instance.m_gameSettings.m_difficulty.ToString());
+            } else
+            {
+                SteamMatchmaking.SetLobbyData(m_CurrentLobbyID, "difficulty", "noSync");
+            } 
 
             m_CurrentLobbyCode = GenerateRoomCode(m_RoomCodeLength);
             SteamMatchmaking.SetLobbyData(lobbyID, "room_code", m_CurrentLobbyCode);
@@ -360,6 +417,15 @@ namespace NormalGolfGameMultiplayerMod
                 Debug.Log($"[NormalGolfGameMultiplayer] Lobby mode: {mode}");
 
                 Enum.TryParse(mode, out MultiplayerMode mode2);
+
+                string dif = SteamMatchmaking.GetLobbyData(m_CurrentLobbyID, "difficulty");
+                if (dif != "noSync")
+                {
+                    SaveManager.instance.m_gameSettings.m_difficulty = int.Parse(dif);
+                } else
+                {
+                    syncDiff = false;
+                }
 
                 Globals.CurrentMode = mode2;
 

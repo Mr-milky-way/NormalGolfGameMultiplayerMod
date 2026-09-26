@@ -1,5 +1,6 @@
 ﻿using BepInEx;
 using BepInEx.Configuration;
+using Fusion;
 using HarmonyLib;
 using Steamworks;
 using System;
@@ -88,6 +89,11 @@ namespace NormalGolfGameMultiplayerMod
         public static ScoreTracker LocalScoreTracker;
         public static CSteamID m_CurrentLobbyID;
         public static MultiplayerMode CurrentMode;
+
+        public static ConfigEntry<KeyboardShortcut> NetworkMenuConfig;
+
+        public static ConfigEntry<KeyboardShortcut> ScoreMenuConfig;
+
 #endif
     }
 
@@ -110,6 +116,20 @@ namespace NormalGolfGameMultiplayerMod
                 "EnableMod",
                 true,
                 "Enables/Disables the mod (Requires restart)"
+            );
+
+            Globals.NetworkMenuConfig = Config.Bind(
+                "Hotkeys",
+                "Toggle Network Menu",
+                new KeyboardShortcut(KeyCode.F1),
+                "Key combination to toggle the Network Menu."
+            );
+
+            Globals.ScoreMenuConfig = Config.Bind(
+                "Hotkeys",
+                "Toggle Score Menu",
+                new KeyboardShortcut(KeyCode.F2),
+                "Key combination to toggle the Score Menu."
             );
 
             if (!Globals.IsModEnabled.Value) return;
@@ -267,7 +287,7 @@ namespace NormalGolfGameMultiplayerMod
         {
             if (Globals.IsInLobby)
             {
-                Globals.LocalBallSender.SendColorToLobby(Globals.m_CurrentLobbyID, c);
+                //Globals.LocalBallSender.SendColorToLobby(Globals.m_CurrentLobbyID, c);
             }
         }
     }

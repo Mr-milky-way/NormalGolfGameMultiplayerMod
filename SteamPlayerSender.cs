@@ -81,11 +81,6 @@ namespace NormalGolfGameMultiplayerMod
                 {
                     meshRenderer.enabled = false;
                 }
-
-                if (TryGetComponent<Collider>(out var collider))
-                {
-                    collider.enabled = false;
-                }
                 transform.Find("Plane").gameObject.SetActive(false);
                 transform.Find("Plane (1)").gameObject.SetActive(false);
             }
@@ -95,6 +90,11 @@ namespace NormalGolfGameMultiplayerMod
                 {
                     meshRenderer.enabled = false;
                 }
+            }
+
+            if (TryGetComponent<Collider>(out var collider))
+            {
+                collider.enabled = false;
             }
 
             GameObject player = GameObject.Find("Valid Spot");
@@ -274,7 +274,6 @@ namespace NormalGolfGameMultiplayerMod
         // Sound Sending and Receiving ---------------------------------------------------------------------------------------------
         public void UnpackSoundPayload(byte[] packet)
         {
-            Debug.Log("[NormalGolfGameMultiplayer] Received sound packet with ID: " + packet[1]);
             byte soundID = packet[1];
             PlayPlayerSound(soundID);
         }
@@ -282,7 +281,6 @@ namespace NormalGolfGameMultiplayerMod
         public void PlayPlayerSound(byte soundID)
         {
             Sound sound = Globals.PlayerSounds[soundID];
-            Debug.Log("[NormalGolfGameMultiplayer] Playing sound: " + sound.m_name);
             switch (sound.m_name)
             {
                 case "gong":

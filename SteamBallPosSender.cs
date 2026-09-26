@@ -1,6 +1,7 @@
 ﻿#if STEAMWORKS
 using Steamworks;
 using System;
+using System.Linq;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
@@ -58,6 +59,10 @@ namespace NormalGolfGameMultiplayerMod
 
         void Start()
         {
+            transform.localScale = new Vector3(0.075f, 0.075f, 0.075f);
+            tr = transform.GetChild(0).GetComponent<TrailRenderer>();
+            Material gameMat = Resources.FindObjectsOfTypeAll<Material>().FirstOrDefault(m => m.name == "ClubTrail");
+            tr.material = gameMat;
             m_audioSource = gameObject.GetComponent<AudioSource>();
             if (IsLocalPlayer)
             {
@@ -65,6 +70,8 @@ namespace NormalGolfGameMultiplayerMod
             }
             if (TryGetComponent<MeshRenderer>(out var renderer))
             {
+                Material BallMat = Resources.FindObjectsOfTypeAll<Material>().FirstOrDefault(m => m.name == "Ball");
+                renderer.material = BallMat;
                 if (IsLocalPlayer)
                 {
                     if (TryGetComponent<MeshRenderer>(out var meshRenderer))
@@ -72,10 +79,6 @@ namespace NormalGolfGameMultiplayerMod
                         meshRenderer.enabled = false;
                     }
                     transform.GetChild(0).gameObject.SetActive(false);
-                }
-                else
-                {
-                    tr = transform.GetChild(0).GetComponent<TrailRenderer>();
                 }
             }
             if (TryGetComponent<Collider>(out var collider))
@@ -272,6 +275,10 @@ namespace NormalGolfGameMultiplayerMod
 
         public void SetTrailColour(Color C)
         {
+            if (!tr)
+            {
+                tr = transform.GetChild(0).GetComponent<TrailRenderer>();
+            }
             tr.startColor = C;
             tr.endColor = C;
         }
