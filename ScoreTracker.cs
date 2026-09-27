@@ -15,7 +15,7 @@ namespace NormalGolfGameMultiplayerMod
     {
 
         private int[] Par = { 3, 4, 3, 4, 4, 5, 4, 4, 3 };
-        private float[] TimesForPars = { 0, 0, 150, 180, 210 };
+        private float[] TimesForPars = { 0, 0, 120, 150, 180 };
 
         private bool m_showScoreCard = true;
 
@@ -66,9 +66,9 @@ namespace NormalGolfGameMultiplayerMod
             PanelManager.instance.m_LMUGCPanel.StartChallenge();
 
             CurrentHoleTime = 0f;
-            TimeToGetToNextHole = 0f;
+            TimeToGetToNextHole = 0.5f;
 
-            PlayersLeftGolfing = false;
+            PlayersLeftGolfing = true;
             StillGolfing = true;
 
             currentHole = 0;
@@ -90,11 +90,36 @@ namespace NormalGolfGameMultiplayerMod
 
             if (Globals.CurrentMode != MultiplayerMode.NSSG) return;
 
-            PlayersLeftGolfing = false;
+
+
+
+            // Sort thru all the players and find who's highest hole is the lowest
+
+            // Check what the lowest highest hole was last frame
+
+            // if (Current round lowest hole > last round lowest hole)
+            //      currentHole = Current round lowest hole + 1;
+            //      PlayersLeftGolfing = false;
+            // else PlayersLeftGolfing = true;/ StillGolfing = true/false;
+
+            // if (PlayersLeftGolfing && !StillGolfing)
+            //      BallActive = false;
+
+
+
+            //hole 1
+            // current hole =0
+            //OverallHighestHole =0
+            // hole 2
+            // current hole = 1
+            // OverallHighestHole =1
+
+
+            int OverallLowestHole = 9999;
 
             foreach (KeyValuePair<CSteamID, string> player in Players)
             {
-                int highestHole = 0;
+                int highestHole = -1;
                 if (!scores.ContainsKey(player.Value))
                 {
                     scores[player.Value] = new Dictionary<int, int>();
@@ -106,13 +131,17 @@ namespace NormalGolfGameMultiplayerMod
                         highestHole = score.Key;
                     }
                 }
+
+
+                if (OverallLowestHole > highestHole)
+                {
+                    OverallLowestHole = highestHole;
+                }
+
+
                 if (highestHole == currentHole)
                 {
                     PlayersLeftGolfing = true;
-                }
-                if (highestHole == currentHole && player.Key == localPlayerID)
-                {
-                    StillGolfing = true;
                 }
 
                 if (highestHole > currentHole && player.Key == localPlayerID)
@@ -121,36 +150,52 @@ namespace NormalGolfGameMultiplayerMod
                 }
             }
 
-
-            if (PlayersLeftGolfing && !StillGolfing)
+            if (OverallLowestHole + 1 > currentHole)
             {
-                HitManager.instance.m_ball.gameObject.SetActive(false);
+                Debug.Log($"Incrementing CurrentHole: {currentHole}");
+                PlayersLeftGolfing = false;
+                currentHole++;
             }
+
+
+            if (PlayersLeftGolfing && !StillGolfing || TimeToGetToNextHole > 0)
+            {
+                HitManager.instance.m_ball.m_resumeBallTrigger.SetActive(false);
+                HitManager.instance.m_ball.m_resumeBallEffect.SetActive(false);
+            }
+            else
+            {
+                if (HitManager.instance.m_ball.m_currentShotData.m_shotComplete)
+                {
+                    HitManager.instance.m_ball.m_resumeBallTrigger.SetActive(true);
+                    HitManager.instance.m_ball.m_resumeBallEffect.SetActive(true);
+                }
+            }
+
+            if (TimeToGetToNextHole <= 0 && !PlayersLeftGolfing)
+            {
+                StillGolfing = true;
+                CurrentHoleTime = 0;
+            }
+
             if (!PlayersLeftGolfing)
             {
-                TimeToGetToNextHole = 30f;
+                TimeToGetToNextHole = 15f;
                 PlayersLeftGolfing = true;
-                currentHole++;
             }
 
 
             if (TimeToGetToNextHole > 0)
             {
                 TimeToGetToNextHole -= Time.deltaTime;
-            }
-            if (TimeToGetToNextHole <= 0)
+            } else
             {
-                StillGolfing = true;
-                HitManager.instance.m_ball.gameObject.SetActive(true);
-                CurrentHoleTime = 0;
+                CurrentHoleTime += Time.deltaTime;
             }
-
-            CurrentHoleTime += Time.deltaTime;
         }
 
         private void OnGUI()
         {
-            if (!m_showScoreCard) return;
             if (!Globals.IsInLobby) return;
 
             float scaleX = (float)Screen.width / baseWidth;
@@ -159,39 +204,48 @@ namespace NormalGolfGameMultiplayerMod
             Matrix4x4 svMat = GUI.matrix;
             GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(scaleX, scaleY, 1f));
 
+            if (m_showScoreCard) { 
+                GUILayout.BeginArea(new Rect(650, 20, 700, 50 + (Players.Count*50)), GUI.skin.box);
+                GUILayout.Label("<b>Scorecards (F2): " + Globals.CurrentMode + "</b>", new GUIStyle(GUI.skin.label) { richText = true });
 
-            GUILayout.BeginArea(new Rect(650, 20, 700, 50 + (Players.Count*50)), GUI.skin.box);
-            GUILayout.Label("<b>Scorecards (F2): " + Globals.CurrentMode + "</b>", new GUIStyle(GUI.skin.label) { richText = true });
+                GUILayout.BeginHorizontal(GUI.skin.box);
+                GUILayout.Label("<b>Name</b>", GUILayout.Width(150));
+                GUILayout.Label("<b>1</b>", GUILayout.Width(50));
+                GUILayout.Label("<b>2</b>", GUILayout.Width(50));
+                GUILayout.Label("<b>3</b>", GUILayout.Width(50));
+                GUILayout.Label("<b>4</b>", GUILayout.Width(50));
+                GUILayout.Label("<b>5</b>", GUILayout.Width(50));
+                GUILayout.Label("<b>6</b>", GUILayout.Width(50));
+                GUILayout.Label("<b>7</b>", GUILayout.Width(50));
+                GUILayout.Label("<b>8</b>", GUILayout.Width(50));
+                GUILayout.Label("<b>9</b>", GUILayout.Width(50));
+                GUILayout.Label("<b>Total</b>", GUILayout.Width(100));
+                GUILayout.EndHorizontal();
 
-            GUILayout.BeginHorizontal(GUI.skin.box);
-            GUILayout.Label("<b>Name</b>", GUILayout.Width(150));
-            GUILayout.Label("<b>1</b>", GUILayout.Width(50));
-            GUILayout.Label("<b>2</b>", GUILayout.Width(50));
-            GUILayout.Label("<b>3</b>", GUILayout.Width(50));
-            GUILayout.Label("<b>4</b>", GUILayout.Width(50));
-            GUILayout.Label("<b>5</b>", GUILayout.Width(50));
-            GUILayout.Label("<b>6</b>", GUILayout.Width(50));
-            GUILayout.Label("<b>7</b>", GUILayout.Width(50));
-            GUILayout.Label("<b>8</b>", GUILayout.Width(50));
-            GUILayout.Label("<b>9</b>", GUILayout.Width(50));
-            GUILayout.Label("<b>Total</b>", GUILayout.Width(100));
-            GUILayout.EndHorizontal();
+                for (int i = 0; SortedPlayers.Count > i; i++) {
+                    string playerName = Players.GetValueSafe(SortedPlayers[i]);
 
-            for (int i = 0; SortedPlayers.Count > i; i++) {
-                string playerName = Players.GetValueSafe(SortedPlayers[i]);
-
-                if (!scores.ContainsKey(playerName))
-                {
-                    scores[playerName] = new Dictionary<int, int>();
+                    if (!scores.ContainsKey(playerName))
+                    {
+                        scores[playerName] = new Dictionary<int, int>();
+                    }
+                    DrawRow(playerName, PlayerColors[i]);
                 }
-                DrawRow(playerName, PlayerColors[i]);
-            }
 
-            GUILayout.EndArea();
+                GUILayout.EndArea();
+                
+            }
 
             if (Globals.CurrentMode != MultiplayerMode.NSSG) return;
 
-
+            if (TimeToGetToNextHole <= 0)
+            {
+                GUI.Label(new Rect(10, 500, 200, 30), $"Time Left For Hole: {TimesForPars[Par[currentHole] - 1] - CurrentHoleTime}");
+            }
+            else
+            {
+                GUI.Label(new Rect(10, 500, 200, 30), $"Get To the Next Hole: {TimeToGetToNextHole}");
+            }
         }
 
         private void RefreshLobbyPlayers()
@@ -454,6 +508,7 @@ namespace NormalGolfGameMultiplayerMod
             if (hole == 255 && score == 255)
             {
                 scores[Players[PlayerID]] = new Dictionary<int, int>();
+                return;
             }
             if (!scores.ContainsKey(Players[PlayerID]))
             {

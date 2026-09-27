@@ -296,6 +296,26 @@ namespace NormalGolfGameMultiplayerMod
                 }
             }
 
+            if (Globals.IsInLobby)
+            {
+                Vector3 localPlayerPos = Globals.LocalPlayerSender.transform.position;
+                foreach (KeyValuePair<CSteamID, GameObject> player in m_activePlayerAvatars)
+                {
+                    GameObject Player = player.Value;
+                    Vector3 NetworkPlayerPos = Player.transform.position;
+                    if  (Vector3.Distance(localPlayerPos, NetworkPlayerPos) < 10f)
+                    {
+                        if (MoveAndHitController.instance.m_mode == ControlMode.Golf)
+                        {
+                            Player.GetComponent<SteamPlayerSender>().ShowPlayer(false);
+                        }
+                    } else
+                    {
+                        Player.GetComponent<SteamPlayerSender>().ShowPlayer();
+                    }
+                }
+            }
+
             m_LobbyUpateTimer += Time.deltaTime;
 
             ReceiveNetworkMessages();

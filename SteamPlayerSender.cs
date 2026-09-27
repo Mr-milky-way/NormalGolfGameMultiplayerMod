@@ -54,6 +54,10 @@ namespace NormalGolfGameMultiplayerMod
         private Vector3 m_Posvelocity = Vector3.zero;
         private Vector2 m_Windvelocity = Vector2.zero;
 
+        private GameObject Video1;
+        private GameObject Video2;
+
+
         public void SetPlayerData(CSteamID ObjOwnerID, CSteamID LobbyID, CSteamID HostId)
         {
             m_ObjOwnerSteamId = ObjOwnerID;
@@ -81,8 +85,10 @@ namespace NormalGolfGameMultiplayerMod
                 {
                     meshRenderer.enabled = false;
                 }
-                transform.Find("Plane").gameObject.SetActive(false);
-                transform.Find("Plane (1)").gameObject.SetActive(false);
+                Video1 = transform.Find("Plane").gameObject;
+                Video1.SetActive(false);
+                Video2 = transform.Find("Plane (1)").gameObject;
+                Video2.SetActive(false);
             }
             else
             {
@@ -444,6 +450,14 @@ namespace NormalGolfGameMultiplayerMod
             }
         }
         //--------------------------------------------------------------------------------------------------------------------------
+
+
+        public void ShowPlayer(bool Hide = true)
+        {
+            if (IsLocalPlayer) return;
+            Video1.SetActive(Hide);
+            Video2.SetActive(Hide);
+        }
 
     }
 }
