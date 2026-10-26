@@ -8,6 +8,7 @@ This is a Multiplayer Mod for Luke Muscat's newest game, [Normal Golf Game](http
 - Sound Sync (bit buggy)
 - Steam Overlay joining
 - Score cards (with 2 modes)
+- Difficulty sync
 - Made by a human <3
 
 ## Planed Features
