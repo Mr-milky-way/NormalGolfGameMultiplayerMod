@@ -26,7 +26,7 @@ namespace NormalGolfGameMultiplayerMod
 
 
         // Data buffers for sending and receiving network data ---------------------------------------------------------------------
-        private readonly byte[] _sendBuffer = new byte[29];
+        private readonly byte[] _sendBuffer = new byte[21];
         private readonly byte[] _soundBuffer = new byte[2];
         //--------------------------------------------------------------------------------------------------------------------------
 
@@ -38,21 +38,18 @@ namespace NormalGolfGameMultiplayerMod
         private Transform localPlayerTransformforROT1;
         //--------------------------------------------------------------------------------------------------------------------------
 
-        // Wind
-        private WindPanel windPanel;
+
 
         // Networked variables -----------------------------------------------------------------------------------------------------
-        Vector2 m_NetworkedWind;
         Vector3 m_NetworkedPosition;
         Vector3 m_NetworkedRot;
         //--------------------------------------------------------------------------------------------------------------------------
 
-        Vector2 m_NetworkedWindTarget;
         Vector3 m_NetworkedPositionTarget;
 
 
         private Vector3 m_Posvelocity = Vector3.zero;
-        private Vector2 m_Windvelocity = Vector2.zero;
+        private Vector3 m_RotVelocity = Vector3.zero;
 
         private GameObject Video1;
         private GameObject Video2;
@@ -70,12 +67,6 @@ namespace NormalGolfGameMultiplayerMod
             if (IsLocalPlayer)
             {
                 Globals.LocalPlayerSender = this;
-            }
-
-            windPanel = GameObject.FindAnyObjectByType<WindPanel>();
-            if (windPanel != null && !IsHost)
-            {
-                windPanel.StopAllCoroutines();
             }
 
 
@@ -149,17 +140,10 @@ namespace NormalGolfGameMultiplayerMod
             {
                 return localPlayerTransformforROT.rotation.eulerAngles;
             }
-            return Vector3.zero;
         }
 
         void Update()
         {
-            if (IsHost)
-            {
-                m_NetworkedWind = windPanel.m_currentWind;
-            }
-
-
             if (IsLocalPlayer)
             {
 
@@ -178,9 +162,7 @@ namespace NormalGolfGameMultiplayerMod
             }
             else {
                 transform.position = Vector3.SmoothDamp(transform.position, m_NetworkedPositionTarget, ref m_Posvelocity, m_TickInterval);
-
-                transform.eulerAngles = m_NetworkedRot;
-                windPanel.m_currentWind = Vector2.SmoothDamp(windPanel.m_currentWind, m_NetworkedWindTarget, ref m_Windvelocity, m_TickInterval);
+                transform.eulerAngles = Vector3.SmoothDamp(transform.eulerAngles, m_NetworkedRot, ref m_RotVelocity, m_TickInterval);
             }
         }
 
@@ -197,12 +179,9 @@ namespace NormalGolfGameMultiplayerMod
             Buffer.BlockCopy(BitConverter.GetBytes(m_NetworkedPosition.y), 0, _sendBuffer, 5, 4);
             Buffer.BlockCopy(BitConverter.GetBytes(m_NetworkedPosition.z), 0, _sendBuffer, 9, 4);
 
-            Buffer.BlockCopy(BitConverter.GetBytes(m_NetworkedWind.x), 0, _sendBuffer, 13, 4);
-            Buffer.BlockCopy(BitConverter.GetBytes(m_NetworkedWind.y), 0, _sendBuffer, 17, 4);
+            Buffer.BlockCopy(BitConverter.GetBytes(m_NetworkedRot.y), 0, _sendBuffer, 13, 4);
 
-            Buffer.BlockCopy(BitConverter.GetBytes(m_NetworkedRot.y), 0, _sendBuffer, 21, 4);
-
-            Buffer.BlockCopy(BitConverter.GetBytes(TickNumber), 0, _sendBuffer, 25, 4);
+            Buffer.BlockCopy(BitConverter.GetBytes(TickNumber), 0, _sendBuffer, 17, 4);
 
             GCHandle handle = GCHandle.Alloc(_sendBuffer, GCHandleType.Pinned);
 
@@ -250,27 +229,20 @@ namespace NormalGolfGameMultiplayerMod
             float posZ = BitConverter.ToSingle(packet, 9);
             Vector3 receivedPosition = new Vector3(posX, posY, posZ);
 
+            float PlayerY = BitConverter.ToSingle(packet, 13);
 
-            float windX = BitConverter.ToSingle(packet, 13);
-            float windY = BitConverter.ToSingle(packet, 17);
-            Vector2 receivedWind = new Vector2(windX, windY);
-
-
-            float PlayerY = BitConverter.ToSingle(packet, 21);
-
-            uint Tick = BitConverter.ToUInt32(packet, 25);
+            uint Tick = BitConverter.ToUInt32(packet, 17);
 
             if (m_CurrentNetworkTick < Tick)
             {
-                ApplyNetworkState(receivedPosition, receivedWind, Tick, PlayerY);
+                ApplyNetworkState(receivedPosition, Tick, PlayerY);
             }
         }
 
-        private void ApplyNetworkState(Vector3 position, Vector2 wind, uint tick, float PlayerY)
+        private void ApplyNetworkState(Vector3 position, uint tick, float PlayerY)
         {
             m_CurrentNetworkTick = tick;
             m_NetworkedPositionTarget = position;
-            m_NetworkedWindTarget = wind;
             m_NetworkedRot = new Vector3(0, PlayerY, 0);
         }
         //--------------------------------------------------------------------------------------------------------------------------
