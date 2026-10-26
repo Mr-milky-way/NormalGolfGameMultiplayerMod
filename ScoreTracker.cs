@@ -76,7 +76,6 @@ namespace NormalGolfGameMultiplayerMod
 
         private void Update()
         {
-            if (Globals.IsInLobby == false) return;
             if (Globals.ScoreMenuConfig.Value.IsDown())
             {
                 m_showScoreCard = !m_showScoreCard;
@@ -222,46 +221,30 @@ namespace NormalGolfGameMultiplayerMod
                 GUILayout.Label("<b>9</b>", GUILayout.Width(50));
                 GUILayout.Label("<b>Total</b>", GUILayout.Width(100));
                 GUILayout.EndHorizontal();
-                if (SortedPlayers != null)
-                {
-                    for (int i = 0; SortedPlayers.Count > i; i++)
+
+                for (int i = 0; SortedPlayers.Count > i; i++) {
+                    string playerName = Players.GetValueSafe(SortedPlayers[i]);
+
+                    if (!scores.ContainsKey(playerName))
                     {
-                        if (Players.TryGetValue(SortedPlayers[i], out string playerName))
-                        {
-
-                            if (!scores.ContainsKey(playerName))
-                            {
-                                scores[playerName] = new Dictionary<int, int>();
-                            }
-
-                            DrawRow(playerName, PlayerColors[i]);
-                        }
+                        scores[playerName] = new Dictionary<int, int>();
                     }
+                    DrawRow(playerName, PlayerColors[i]);
                 }
 
                 GUILayout.EndArea();
                 
-            } else
+            }
+
+            if (Globals.CurrentMode != MultiplayerMode.NSSG) return;
+
+            if (TimeToGetToNextHole <= 0)
             {
-
-                if (Globals.CurrentMode != MultiplayerMode.NSSG) return;
-
-                GUIStyle timerStyle = new GUIStyle(GUI.skin.label);
-                timerStyle.fontSize = 24;
-                timerStyle.normal.textColor = Color.white;
-
-                Rect areaRect = new Rect(610, 20, 700, 50);
-                GUILayout.BeginArea(areaRect, GUI.skin.box);
-                if (TimeToGetToNextHole <= 0)
-                {
-                    double timeLeft = TimesForPars[Par[currentHole] - 1] - CurrentHoleTime;
-                    GUILayout.Label($"Time Left For Hole: {timeLeft:F1}", timerStyle, GUILayout.Height(40));
-                }
-                else
-                {
-                    GUILayout.Label($"Get To the Next Hole: {TimeToGetToNextHole:F1}", timerStyle, GUILayout.Height(40));
-                }
-                GUILayout.EndArea();
+                GUI.Label(new Rect(10, 500, 200, 30), $"Time Left For Hole: {TimesForPars[Par[currentHole] - 1] - CurrentHoleTime}");
+            }
+            else
+            {
+                GUI.Label(new Rect(10, 500, 200, 30), $"Get To the Next Hole: {TimeToGetToNextHole}");
             }
         }
 
