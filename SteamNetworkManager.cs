@@ -149,8 +149,10 @@ namespace NormalGolfGameMultiplayerMod
                     FindNGGLobbies(m_CurrentLobbyCodeEnterThingy);
                 }
 
-
-                syncDiff = GUI.Toggle(new Rect(20, 240, 200, 20), syncDiff, "Enable difficulty Sync");
+                if (!isDropdownOpen)
+                {
+                    syncDiff = GUI.Toggle(new Rect(20, 240, 200, 20), syncDiff, "Enable difficulty Sync");
+                }
 
                 Rect dropdownRect = new Rect(20, 190, 200, 40);
                 if (GUI.Button(dropdownRect, $"Choose: {options[selectedIndex]}"))
@@ -295,7 +297,7 @@ namespace NormalGolfGameMultiplayerMod
                     }
                 }
             }
-
+            /*
             if (Globals.IsInLobby)
             {
                 Vector3 localPlayerPos = Globals.LocalPlayerSender.transform.position;
@@ -303,19 +305,16 @@ namespace NormalGolfGameMultiplayerMod
                 {
                     GameObject Player = player.Value;
                     Vector3 NetworkPlayerPos = Player.transform.position;
-                    if  (Vector3.Distance(localPlayerPos, NetworkPlayerPos) < 10f)
+                    if  ((Player.transform.position - localPlayerPos).sqrMagnitude < 100f && MoveAndHitController.instance.m_mode == ControlMode.Golf)
                     {
-                        if (MoveAndHitController.instance.m_mode == ControlMode.Golf)
-                        {
-                            Player.GetComponent<SteamPlayerSender>().ShowPlayer(false);
-                        }
+                        Player.GetComponent<SteamPlayerSender>().ShowPlayer(false);
                     } else
                     {
                         Player.GetComponent<SteamPlayerSender>().ShowPlayer();
                     }
                 }
             }
-
+            */
             m_LobbyUpateTimer += Time.deltaTime;
 
             ReceiveNetworkMessages();
@@ -476,6 +475,7 @@ namespace NormalGolfGameMultiplayerMod
                 Debug.Log("[NormalGolfGameMultiplayer] Player Left:" + callback.m_ulSteamIDUserChanged);
                 if (callback.m_ulSteamIDUserChanged == (ulong)m_CurrentLobbyOwnerID)
                 {
+                    MouseCursor.Unlock();
                     SceneManager.LoadScene("Menu2");
                 }
                 RemovePlayerAvatar((CSteamID)callback.m_ulSteamIDUserChanged);
@@ -566,10 +566,11 @@ namespace NormalGolfGameMultiplayerMod
                 IntPtr msgPtr = messagePtrs[i];
                 SteamNetworkingMessage_t message = Marshal.PtrToStructure<SteamNetworkingMessage_t>(msgPtr);
 
-                if (message.m_cbSize == 29)
+
+                if (message.m_cbSize == 21)
                 {
-                    byte[] packet = new byte[29];
-                    Marshal.Copy(message.m_pData, packet, 0, 29);
+                    byte[] packet = new byte[21];
+                    Marshal.Copy(message.m_pData, packet, 0, 21);
 
                     if (packet[0] == 1)
                     {
@@ -584,13 +585,6 @@ namespace NormalGolfGameMultiplayerMod
                             }
                         }
                     }
-                }
-
-
-                if (message.m_cbSize == 21)
-                {
-                    byte[] packet = new byte[21];
-                    Marshal.Copy(message.m_pData, packet, 0, 21);
 
                     if (packet[0] == 2)
                     {
@@ -714,6 +708,32 @@ namespace NormalGolfGameMultiplayerMod
                     {
                         CSteamID senderSteamID = message.m_identityPeer.GetSteamID();
                         Globals.LocalScoreTracker.UnpackScorePayload(packet, senderSteamID);
+                    }
+                }
+                SteamNetworkingMessage_t.Release(msgPtr);
+            }
+
+
+
+
+
+
+            messageCount = SteamNetworkingMessages.ReceiveMessagesOnChannel(4, messagePtrs, messagePtrs.Length);
+
+            for (int i = 0; i < messageCount; i++)
+            {
+                IntPtr msgPtr = messagePtrs[i];
+                SteamNetworkingMessage_t message = Marshal.PtrToStructure<SteamNetworkingMessage_t>(msgPtr);
+
+
+                if (message.m_cbSize == 13)
+                {
+                    byte[] packet = new byte[13];
+                    Marshal.Copy(message.m_pData, packet, 0, 13);
+
+                    if (packet[0] == 0)
+                    {
+                        Globals.LocalWindSync.UnpackStatePayload(packet);
                     }
                 }
                 SteamNetworkingMessage_t.Release(msgPtr);

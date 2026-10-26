@@ -24,10 +24,12 @@ using static UnityEngine.Scripting.GarbageCollector;
 // Everything else should be set up, just set the build config to STEAMWORKS or FUSION.
 // I've added some comments around the code to help make it easier to read.
 // Steamworks Data layout:
-// I have Steamworks configed to use 3 channels, 0 for unreliable movement, 1 for Object sync (reliable), 2 for sound (reliable). The first byte of a packet is the data ID
+// I have Steamworks configed to use 5 channels, 0 for unreliable movement, 1 for Object sync (reliable), 2 for sound (reliable), 3 for score data, and 4 for wind data. The first byte of a packet is the data ID
 // On channel 0 you have Data ID of 1 for player Data and 2 for Ball Data.
 // On channel 1 you have Data ID of 1 for SaveableObject Data.
 // On channel 2 you have Data ID of 0 for Ball Sound and 1 for Player Sound.
+// On channel 3 you have score data
+// On channel 4 you have wind data
 // SteamSaveObjectSync is a bit different than the other syncs, it has only the host sending data to the clients. If the clients try to save the game while in story mode it will be blocked
 // Also the code kinda sucks 
 //
@@ -94,6 +96,8 @@ namespace NormalGolfGameMultiplayerMod
 
         public static ConfigEntry<KeyboardShortcut> ScoreMenuConfig;
 
+        public static SteamWindSync LocalWindSync;
+
 #endif
     }
 
@@ -105,7 +109,7 @@ namespace NormalGolfGameMultiplayerMod
     }
 
 
-    [BepInPlugin("Mr-Milky-Way.NormalGolfGameMultiplayer", "NormalGolfGameMultiplayer", "0.1.0")]
+    [BepInPlugin("Mr-Milky-Way.NormalGolfGameMultiplayer", "NormalGolfGameMultiplayer", "0.2.0")]
     public class Plugin : BaseUnityPlugin
     {
 
@@ -148,6 +152,7 @@ namespace NormalGolfGameMultiplayerMod
             var harmony = new Harmony("Multi.player");
             harmony.PatchAll();
 
+
             Application.runInBackground = true;
         }
     }
@@ -159,6 +164,11 @@ namespace NormalGolfGameMultiplayerMod
     {
         static bool Prefix(SteamManager __instance)
         {
+#if STEAMWORKS
+            GameObject WindSync = new GameObject("__SteamWindSync");
+            SteamWindSync SWS = WindSync.AddComponent<SteamWindSync>();
+            Globals.LocalWindSync = SWS;
+#endif
             if (Globals.SteamSaveObjectSync) return true;
             if (!Globals.IsModEnabled.Value) return true;
 
