@@ -7,16 +7,14 @@ This is a Multiplayer Mod for Luke Muscat's newest game, [Normal Golf Game](http
 - Wind Sync
 - Sound Sync (bit buggy)
 - Steam Overlay joining
+- Score cards (with 2 modes)
+- Made by a human <3
 
 ## Planed Features
-- Score Sync (little score cards for each player)
-- Name Displays
 - "Matchmaking system" A little system to allow totally random players to "queue" for a match with each other so they can play a round of golf
-
   
 ## Known issues
 - Sounds are odd in terms of location and strength (I tried my best lol)
-- Wind can break and go to 0 on clients but be fine on the host
 - Ball trails don't always reset correctly on clients
 - The Shaders on Luke's model/video thingy get messed up on other transparent objects (windows, grass, trees, ect)
 - ~~Luke may or may not be the right size~~
